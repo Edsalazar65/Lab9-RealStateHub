@@ -23,6 +23,7 @@ import {
   createProperty,
   updateProperty,
   deleteProperty,
+  getPropertyStats
 } from '../controllers/propertyController.js';
 
 const router = Router();
@@ -43,6 +44,11 @@ const router = Router();
  * - minBedrooms: Habitaciones mínimas
  * - city: Filtro por ciudad
  */
+
+router.get('/stats', (req, res) => {
+  void getPropertyStats(req, res);
+});
+
 router.get('/', (req, res) => {
   void getAllProperties(req, res);
 });

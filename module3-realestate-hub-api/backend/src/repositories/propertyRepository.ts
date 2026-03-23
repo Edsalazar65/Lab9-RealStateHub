@@ -121,15 +121,38 @@ export const propertyRepository = {
   /**
    * Busca todas las propiedades con filtros opcionales.
    */
-  async findAll(filters?: PropertyFilters): Promise<Property[]> {
-    const where = buildWhereClause(filters);
-
+  async findAll(filters: PropertyFilters, skip?: number, take?: number) {
     const properties = await prisma.property.findMany({
-      where,
-      orderBy: { createdAt: 'desc' },
+      where: buildWhereClause(filters),
+      skip,
+      take,
+      orderBy: { createdAt: 'desc' }
     });
 
     return properties.map(toProperty);
+  },
+
+  async count(filters: PropertyFilters) {
+    return prisma.property.count({
+      where: buildWhereClause(filters)
+    });
+  },
+
+  async getStats() {
+    const countByType = await prisma.property.groupBy({
+      by: ['propertyType'],
+      _count: true,
+      _avg: { price: true },
+      _min: { price: true },
+      _max: { price: true }
+    });
+
+    const totalCount = await prisma.property.count();
+
+    return {
+      totalProperties: totalCount,
+      byType: countByType
+    };
   },
 
   /**
@@ -235,7 +258,7 @@ function buildWhereClause(filters?: PropertyFilters): Record<string, unknown> {
     where.city = { contains: filters.city };
   }
 
-  // Búsqueda por texto en múltiples campos
+
   if (filters.search) {
     where.OR = [
       { title: { contains: filters.search } },
@@ -248,5 +271,4 @@ function buildWhereClause(filters?: PropertyFilters): Record<string, unknown> {
   return where;
 }
 
-// Export por defecto para compatibilidad
 export default propertyRepository;

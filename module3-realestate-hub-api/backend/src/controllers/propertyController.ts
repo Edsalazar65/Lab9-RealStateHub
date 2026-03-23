@@ -35,7 +35,10 @@ import { propertyRepository } from '../repositories/propertyRepository.js';
 
 export async function getAllProperties(req: Request, res: Response): Promise<void> {
   try {
-    // Extraemos filtros de los query params
+    const page = Math.max(1, Number(req.query.page) || 1);
+    const limit = Math.max(1, Number(req.query.limit) || 10);
+    const skip = (page - 1) * limit;
+
     const filters: PropertyFilters = {
       search: req.query.search as string | undefined,
       propertyType: req.query.propertyType as PropertyFilters['propertyType'],
@@ -46,22 +49,26 @@ export async function getAllProperties(req: Request, res: Response): Promise<voi
       city: req.query.city as string | undefined,
     };
 
-    // Delegamos al repositorio
-    const properties = await propertyRepository.findAll(filters);
+    const [properties, total] = await Promise.all([
+      propertyRepository.findAll(filters, skip, limit), 
+      propertyRepository.count(filters) 
+    ]);
+
+    const totalPages = Math.ceil(total / limit);
 
     res.json({
       success: true,
       data: properties,
+      meta: { 
+        total,
+        page,
+        limit,
+        pages: totalPages
+      }
     });
   } catch (error) {
     console.error('Error al obtener propiedades:', error);
-    res.status(500).json({
-      success: false,
-      error: {
-        message: 'Error interno del servidor',
-        code: 'INTERNAL_ERROR',
-      },
-    });
+    res.status(500).json({ success: false, error: { message: 'Error interno', code: 'INTERNAL_ERROR' } });
   }
 }
 
@@ -231,6 +238,25 @@ export async function deleteProperty(req: Request, res: Response): Promise<void>
         message: 'Error interno del servidor',
         code: 'INTERNAL_ERROR',
       },
+    });
+  }
+}
+
+
+export async function getPropertyStats(req: Request, res: Response): Promise<void> {
+  try {
+
+    const stats = await propertyRepository.getStats();
+
+    res.json({
+      success: true,
+      data: stats
+    });
+  } catch (error) {
+    console.error('Error al obtener estadísticas:', error);
+    res.status(500).json({
+      success: false,
+      error: { message: 'Error al calcular estadísticas', code: 'STATS_ERROR' }
     });
   }
 }
